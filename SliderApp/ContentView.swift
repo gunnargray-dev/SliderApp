@@ -56,21 +56,227 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.8), value: responseSpeed)
             
             VStack {
+                // Title at top
                 Text("Response Speed Demo")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
-                    .padding(.bottom, 40)
-                
-                ResponseSpeedSlider(responseSpeed: $responseSpeed)
-                    .padding(.horizontal, 20)
+                    .padding(.top, 60)
                 
                 Spacer()
+                
+                // Data visualization in center
+                DataVisualizationView(responseSpeed: responseSpeed)
+                
+                Spacer()
+                
+                // Slider at bottom
+                ResponseSpeedSlider(responseSpeed: $responseSpeed)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 50)
             }
-            .padding(.top, 60)
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Data Visualization Component
+struct DataVisualizationView: View {
+    let responseSpeed: Double
+    @State private var animatedValue: Double = 0
+    @State private var sampleData: [Double] = []
+    @State private var timer: Timer?
+    
+    private var responseTime: Double {
+        // Convert response speed to milliseconds (inverse relationship)
+        return 200 / responseSpeed // Base 200ms, divided by speed multiplier
+    }
+    
+    private var throughput: Double {
+        // Calculate throughput based on response speed
+        return responseSpeed * 50 // Base 50 operations/sec, multiplied by speed
+    }
+    
+    var body: some View {
+        VStack(spacing: 30) {
+            // Main data display
+            VStack(spacing: 20) {
+                // Response Time Card
+                DataCard(
+                    title: "Response Time",
+                    value: String(format: "%.0fms", responseTime),
+                    subtitle: "Average latency",
+                    color: getDataColor()
+                )
+                
+                // Throughput Card  
+                DataCard(
+                    title: "Throughput",
+                    value: String(format: "%.0f ops/sec", throughput),
+                    subtitle: "Operations per second",
+                    color: getDataColor()
+                )
+                
+                // Speed Multiplier Card
+                DataCard(
+                    title: "Speed Multiplier",
+                    value: String(format: "%.1fx", responseSpeed),
+                    subtitle: "Current setting",
+                    color: getDataColor(),
+                    isHighlighted: true
+                )
+            }
+            
+            // Live data visualization
+            LiveDataChart(responseSpeed: responseSpeed, color: getDataColor())
+        }
+        .onAppear {
+            animatedValue = responseSpeed
+            startDataSimulation()
+        }
+        .onDisappear {
+            stopDataSimulation()
+        }
+        .onChange(of: responseSpeed) { _, newValue in
+            withAnimation(.easeInOut(duration: 0.5)) {
+                animatedValue = newValue
+            }
+        }
+    }
+    
+    private func getDataColor() -> Color {
+        let normalizedSpeed = (responseSpeed - 0.5) / 1.0
+        
+        let colorStops: [(Double, Color)] = [
+            (0.0, Color(hex: "7c3aed")), // Purple
+            (0.2, Color(hex: "3b82f6")), // Blue
+            (0.4, Color(hex: "10b981")), // Emerald
+            (0.6, Color(hex: "f59e0b")), // Amber
+            (0.8, Color(hex: "ef4444")), // Red
+            (1.0, Color(hex: "f43f5e")), // Rose
+        ]
+        
+        for i in 0..<colorStops.count - 1 {
+            let current = colorStops[i]
+            let next = colorStops[i + 1]
+            
+            if normalizedSpeed >= current.0 && normalizedSpeed <= next.0 {
+                let range = next.0 - current.0
+                let factor = range > 0 ? (normalizedSpeed - current.0) / range : 0
+                return Color.interpolate(from: current.1, to: next.1, factor: factor)
+            }
+        }
+        
+        return colorStops.last?.1 ?? Color.blue
+    }
+    
+    private func startDataSimulation() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            let newValue = responseSpeed + Double.random(in: -0.1...0.1)
+            sampleData.append(newValue)
+            if sampleData.count > 50 {
+                sampleData.removeFirst()
+            }
+        }
+    }
+    
+    private func stopDataSimulation() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
+
+// MARK: - Data Card Component
+struct DataCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+    let color: Color
+    var isHighlighted: Bool = false
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .textCase(.uppercase)
+                .tracking(1)
+            
+            Text(value)
+                .font(.system(size: isHighlighted ? 32 : 28, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+                .shadow(color: color.opacity(0.3), radius: 4, x: 0, y: 2)
+            
+            Text(subtitle)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 24)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(color.opacity(isHighlighted ? 0.4 : 0.2), lineWidth: 1)
+        )
+        .scaleEffect(isHighlighted ? 1.05 : 1.0)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHighlighted)
+    }
+}
+
+// MARK: - Live Data Chart Component
+struct LiveDataChart: View {
+    let responseSpeed: Double
+    let color: Color
+    @State private var chartData: [CGFloat] = Array(repeating: 0.5, count: 30)
+    @State private var animationTimer: Timer?
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("LIVE DATA")
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.6))
+                .tracking(1.5)
+            
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(Array(chartData.enumerated()), id: \.offset) { index, value in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(color.opacity(0.8))
+                        .frame(width: 4, height: max(4, value * 40))
+                        .animation(.easeInOut(duration: 0.3), value: value)
+                }
+            }
+            .frame(height: 50)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .onAppear {
+            startAnimation()
+        }
+        .onDisappear {
+            stopAnimation()
+        }
+        .onChange(of: responseSpeed) { _, _ in
+            updateChartData()
+        }
+    }
+    
+    private func startAnimation() {
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
+            updateChartData()
+        }
+    }
+    
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+    }
+    
+    private func updateChartData() {
+        let newValue = CGFloat(responseSpeed * 0.4 + Double.random(in: -0.2...0.2))
+        chartData.removeFirst()
+        chartData.append(max(0.1, min(1.0, newValue)))
     }
 }
 

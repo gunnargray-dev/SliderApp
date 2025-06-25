@@ -15,8 +15,12 @@ struct ResponseSpeedSlider: View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(hex: "232525"))
+                    .fill(.ultraThinMaterial)
                     .frame(height: 120)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(.white.opacity(0.1), lineWidth: 1)
+                    )
                 
                 VStack(alignment: .leading, spacing: 4) {
                     // Title inside container
@@ -163,8 +167,12 @@ private struct SliderView: View {
             ZStack(alignment: .leading) {
                 // Background Track
                 Capsule()
-                    .fill(Color(hex: "2D2F2F"))
+                    .fill(.thinMaterial)
                     .frame(height: trackHeight)
+                    .overlay(
+                        Capsule()
+                            .stroke(.white.opacity(0.1), lineWidth: 0.5)
+                    )
 
                 // Micro-ticks (skip leftmost tick to avoid overflow)
                 ForEach(1...10, id: \.self) { idx in
@@ -223,9 +231,16 @@ private struct SliderView: View {
                     
                     // Main Thumb
                     Circle()
-                        .fill(Color.white.opacity(0.05))
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                        .fill(.regularMaterial)
+                        .overlay(
+                            Circle()
+                                .stroke(.white.opacity(0.8), lineWidth: 1.5)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(sliderColors.brighter.opacity(0.6), lineWidth: 1)
+                                .scaleEffect(0.8)
+                        )
                         .overlay(
                             Text(String(format: "%.1fx", responseSpeed))
                                 .font(.system(size: 12, weight: .semibold))
@@ -234,10 +249,7 @@ private struct SliderView: View {
                                 .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isDragging)
                         )
                         .frame(width: thumbSize, height: thumbSize)
-                        .overlay(
-                            Circle()
-                                .stroke(Color(hex: "1B474D"), lineWidth: 1)
-                        )
+
                         .shadow(color: .black.opacity(isDragging ? 0.25 : 0.15), radius: isDragging ? 6 : 4, x: 0, y: isDragging ? 3 : 2)
                 }
                 .scaleEffect(isDragging ? 1.15 : 1.0)
@@ -285,8 +297,11 @@ private struct SliderView: View {
                 .foregroundColor(Color(hex: "FCFCF9"))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(sliderColors.darker)
-                .cornerRadius(12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(sliderColors.brighter.opacity(0.6), lineWidth: 1)
+                )
                 .opacity(isDragging ? 1 : 0)
                 .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isDragging)
                 .position(

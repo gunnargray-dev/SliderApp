@@ -131,12 +131,9 @@ private struct SliderView: View {
         // Calculate intensity based on speed (0.5x to 1.5x range)
         let intensityFactor = (responseSpeed - 0.5) / 1.0 // 0.0 to 1.0
         
-        // Custom gradient colors (darker to brighter)
-        let darkerColor = Color(hex: "20808D")  // Darker teal
-        let brighterColor = Color(hex: "1FB8CD") // Brighter cyan
-        
-        // Create gradient from darker to brighter
-        let gradientColors = [darkerColor, brighterColor]
+        // Dynamic slider colors based on response speed
+        let sliderColors = getSliderColors(for: responseSpeed)
+        let gradientColors = [sliderColors.darker, sliderColors.brighter]
         
         // Calculate glow intensity based on speed
         let glowIntensity = intensityFactor
@@ -150,8 +147,8 @@ private struct SliderView: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                brighterColor.opacity(particle.opacity),
-                                darkerColor.opacity(particle.opacity * 0.6)
+                                sliderColors.brighter.opacity(particle.opacity),
+                                sliderColors.darker.opacity(particle.opacity * 0.6)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -196,8 +193,8 @@ private struct SliderView: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    darkerColor.opacity(glowOpacity * 0.6),
-                                    brighterColor.opacity(glowOpacity * 0.4),
+                                    sliderColors.darker.opacity(glowOpacity * 0.6),
+                                    sliderColors.brighter.opacity(glowOpacity * 0.4),
                                     Color.clear
                                 ]),
                                 center: .center,
@@ -213,7 +210,7 @@ private struct SliderView: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    brighterColor.opacity(glowOpacity * 0.8),
+                                    sliderColors.brighter.opacity(glowOpacity * 0.8),
                                     Color.clear
                                 ]),
                                 center: .center,
@@ -288,7 +285,7 @@ private struct SliderView: View {
                 .foregroundColor(Color(hex: "FCFCF9"))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color(hex: "105C67"))
+                .background(sliderColors.darker)
                 .cornerRadius(12)
                 .opacity(isDragging ? 1 : 0)
                 .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isDragging)
@@ -425,6 +422,52 @@ private struct SliderView: View {
             // Add some randomness to current life for more natural dispersion
                          particles[i].life *= Double.random(in: 0.7...1.0)
          }
+     }
+     
+     // MARK: - Dynamic Color System
+     private func getSliderColors(for speed: Double) -> (darker: Color, brighter: Color) {
+         let normalizedSpeed = (speed - 0.5) / 1.0 // 0.0 to 1.0
+         
+         // Define color pairs for different speed ranges
+         let colorPairs: [(Double, (Color, Color))] = [
+             (0.0, (Color(hex: "4c1d95"), Color(hex: "7c3aed"))), // Purple
+             (0.2, (Color(hex: "1e40af"), Color(hex: "3b82f6"))), // Blue
+             (0.4, (Color(hex: "059669"), Color(hex: "10b981"))), // Emerald
+             (0.6, (Color(hex: "d97706"), Color(hex: "f59e0b"))), // Amber
+             (0.8, (Color(hex: "dc2626"), Color(hex: "ef4444"))), // Red
+             (1.0, (Color(hex: "be123c"), Color(hex: "f43f5e"))), // Rose
+         ]
+         
+         // Find the two closest color pairs and interpolate
+         var lowerPair = colorPairs[0]
+         var upperPair = colorPairs[0]
+         
+         for i in 0..<colorPairs.count - 1 {
+             if normalizedSpeed >= colorPairs[i].0 && normalizedSpeed <= colorPairs[i + 1].0 {
+                 lowerPair = colorPairs[i]
+                 upperPair = colorPairs[i + 1]
+                 break
+             }
+         }
+         
+         // Calculate interpolation factor
+         let range = upperPair.0 - lowerPair.0
+         let factor = range > 0 ? (normalizedSpeed - lowerPair.0) / range : 0
+         
+         // Interpolate colors
+         let darkerColor = Color.interpolate(
+             from: lowerPair.1.0,
+             to: upperPair.1.0,
+             factor: factor
+         )
+         
+         let brighterColor = Color.interpolate(
+             from: lowerPair.1.1,
+             to: upperPair.1.1,
+             factor: factor
+         )
+         
+         return (darker: darkerColor, brighter: brighterColor)
      }
  }
 
